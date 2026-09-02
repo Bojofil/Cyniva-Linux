@@ -29,7 +29,8 @@ modules:
       # --- your apps ---
       - firefox
       - code                       # needs the Microsoft repo, see files/system/etc/yum.repos.d/
-      - megasync                   # needs the MEGA repo, see same directory
+      # megasync is NOT here -- its %post scriptlet breaks the whole
+      # transaction. Installed separately by install-megasync.sh below.
       - papirus-icon-theme
 
       # --- Active Directory plumbing ---
@@ -85,6 +86,7 @@ modules:
   # ---------------------------------------------------------------
   - type: script
     scripts:
+      - install-megasync.sh
       - dconf-update.sh
       - authselect.sh
       - fix-perms.sh
