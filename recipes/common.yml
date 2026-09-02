@@ -3,6 +3,22 @@
 
 modules:
   # ---------------------------------------------------------------
+  # Static files (repo definitions, dconf defaults, helper scripts)
+  # ---------------------------------------------------------------
+  # MUST come before rpm-ostree: this is what puts vscode.repo and
+  # megasync.repo into /etc/yum.repos.d. Without it the resolver has never
+  # heard of those repos and fails with "Packages not found: code, megasync".
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  # Import third-party repo GPG keys before installing from those repos.
+  - type: script
+    scripts:
+      - repo-keys.sh
+
+  # ---------------------------------------------------------------
   # Layered RPMs
   # ---------------------------------------------------------------
   # NOTE: newer BlueBuild releases renamed this module to `dnf`.
@@ -63,14 +79,6 @@ modules:
     fonts:
       nerd-fonts:
         - AdwaitaMono
-
-  # ---------------------------------------------------------------
-  # Static files (repo definitions, dconf defaults, sudoers drop-in)
-  # ---------------------------------------------------------------
-  - type: files
-    files:
-      - source: system
-        destination: /
 
   # ---------------------------------------------------------------
   # Build-time scripts
