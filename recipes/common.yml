@@ -50,7 +50,7 @@ modules:
   # ---------------------------------------------------------------
   # Flatpaks are NOT baked into the image. This module drops in a systemd
   # unit that installs them on first boot, then marks itself done.
-  - type: default-flatpaks
+  - type: default-flatpaks@v1
     notify: true
     system:
       repo-url: https://dl.flathub.org/repo/flathub.flatpakrepo
