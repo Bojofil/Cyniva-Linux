@@ -1,0 +1,87 @@
+# Shared modules for both the GNOME and KDE images.
+# Included from recipes/gnome.yml and (later) recipes/kde.yml via `from-file`.
+
+modules:
+  # ---------------------------------------------------------------
+  # Layered RPMs
+  # ---------------------------------------------------------------
+  # NOTE: newer BlueBuild releases renamed this module to `dnf`.
+  # If the build fails with "unknown module type", swap `rpm-ostree` -> `dnf`
+  # and check https://blue-build.org/reference/modules/ for the current key names.
+  - type: rpm-ostree
+    install:
+      # --- your apps ---
+      - firefox
+      - code                       # needs the Microsoft repo, see files/system/etc/yum.repos.d/
+      - megasync                   # needs the MEGA repo, see same directory
+      - papirus-icon-theme
+
+      # --- Active Directory plumbing ---
+      # The join itself CANNOT be baked in (per-machine keytab), but every
+      # tool needed to perform it at first boot can be.
+      - realmd
+      - sssd
+      - sssd-tools
+      - adcli
+      - oddjob
+      - oddjob-mkhomedir
+      - samba-common-tools
+      - krb5-workstation
+
+  # ---------------------------------------------------------------
+  # Flatpaks
+  # ---------------------------------------------------------------
+  # Flatpaks are NOT baked into the image. This module drops in a systemd
+  # unit that installs them on first boot, then marks itself done.
+  - type: default-flatpaks
+    notify: true
+    system:
+      repo-url: https://dl.flathub.org/repo/flathub.flatpakrepo
+      repo-name: flathub
+      repo-title: "Flathub"
+      install:
+        - eu.betterbird.Betterbird
+        - com.bitwarden.desktop
+        - com.spotify.Client
+        - com.discordapp.Discord
+        - io.github.pol_rivero.github-desktop-plus
+        - com.adamcake.Bolt
+      remove:
+        # We layer the Firefox RPM instead, so drop Bluefin's bundled Flatpak.
+        # Without this you get two Firefoxes with separate profiles.
+        # If you ever switch to the Flatpak, move org.mozilla.firefox up to
+        # `install:` and drop `firefox` from the rpm-ostree list above.
+        - org.mozilla.firefox
+
+  # ---------------------------------------------------------------
+  # Fonts
+  # ---------------------------------------------------------------
+  # Adwaita Mono Nerd Font was added upstream in Nerd Fonts 3.4.0.
+  # If the build 404s, check the exact asset name on the Nerd Fonts
+  # releases page -- casing matters ("AdwaitaMono" vs "Adwaita-Mono").
+  - type: fonts
+    fonts:
+      nerd-fonts:
+        - AdwaitaMono
+
+  # ---------------------------------------------------------------
+  # Static files (repo definitions, dconf defaults, sudoers drop-in)
+  # ---------------------------------------------------------------
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  # ---------------------------------------------------------------
+  # Build-time scripts
+  # ---------------------------------------------------------------
+  - type: script
+    scripts:
+      - dconf-update.sh
+      - authselect.sh
+      - fix-perms.sh
+
+  # ---------------------------------------------------------------
+  # Image signing -- keep this last
+  # ---------------------------------------------------------------
+  - type: signing

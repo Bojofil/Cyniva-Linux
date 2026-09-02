@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# Per-machine Active Directory setup.
+#
+# Deliberately contains no domain-specific data, so this file is safe to
+# ship in a public image. Everything site-specific is supplied at runtime.
+#
+# Usage:
+#   sudo ad-setup <domain> <path-to-sssd.conf> [join-user]
+#
+# Environment:
+#   HOSTNAME_PREFIX  Name prefix for generated hostnames.  Default: CYN-WS
+#   MACHINE_NAME     Skip generation and use this exact name instead.
+#
+# Example:
+#   sudo ad-setup corp.example.com /run/media/me/usb/sssd.conf jsmith
+#   sudo MACHINE_NAME=CYN-WS0042 ad-setup corp.example.com ./sssd.conf jsmith
+
+set -euo pipefail
+
+DOMAIN="${1:-}"
+CONF_SRC="${2:-}"
+JOIN_USER="${3:-Administrator}"
+HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-CYN-WS}"
+
+if [[ -z "$DOMAIN" || -z "$CONF_SRC" ]]; then
+    echo "usage: ad-setup <domain> <path-to-sssd.conf> [join-user]" >&2
+    exit 1
+fi
+
+if [[ $EUID -ne 0 ]]; then
+    echo "must be run as root" >&2
+    exit 1
+fi
+
+if [[ ! -f "$CONF_SRC" ]]; then
+    echo "no such file: $CONF_SRC" >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------
+# Pick a machine name
+# ---------------------------------------------------------------------
+# NetBIOS caps computer names at 15 characters. "CYN-WS" + 4 digits = 10,
+# which leaves room, but a longer prefix will silently truncate in AD.
+generate_name() {
+    local n
+    n=$(printf '%04d' "$(( $(od -An -N2 -tu2 < /dev/urandom) % 10000 ))")
+    printf '%s%s' "$HOSTNAME_PREFIX" "$n"
+}
+
+name_taken() {
+    # Joined machines register in AD-integrated DNS, so a resolvable name is
+    # almost certainly in use. Cheap heuristic; not authoritative.
+    getent hosts "$1.$DOMAIN" >/dev/null 2>&1
+}
+
+if [[ -n "${MACHINE_NAME:-}" ]]; then
+    NEW_NAME="$MACHINE_NAME"
+    echo "==> Using supplied machine name: $NEW_NAME"
+else
+    echo "==> Generating machine name"
+    for attempt in {1..10}; do
+        NEW_NAME="$(generate_name)"
+        if name_taken "$NEW_NAME"; then
+            echo "    $NEW_NAME already resolves, retrying ($attempt/10)"
+            continue
+        fi
+        break
+    done
+    echo "    Selected: $NEW_NAME"
+fi
+
+if (( ${#NEW_NAME} > 15 )); then
+    echo "ERROR: '$NEW_NAME' exceeds the 15-character NetBIOS limit." >&2
+    echo "       Shorten HOSTNAME_PREFIX and try again." >&2
+    exit 1
+fi
+
+echo "==> Setting hostname to $NEW_NAME.$DOMAIN"
+hostnamectl set-hostname "$NEW_NAME.$DOMAIN"
+
+# ---------------------------------------------------------------------
+# Config and join
+# ---------------------------------------------------------------------
+echo "==> Installing sssd.conf"
+install -o root -g root -m 0600 "$CONF_SRC" /etc/sssd/sssd.conf
+
+echo "==> Joining $DOMAIN as $NEW_NAME"
+# adcli is used instead of `realm join` specifically because realm rewrites
+# /etc/sssd/sssd.conf, which would clobber the file we just installed.
+# --computer-name is passed explicitly rather than letting adcli infer it.
+adcli join \
+    --domain="$DOMAIN" \
+    --computer-name="$NEW_NAME" \
+    --login-user="$JOIN_USER"
+
+echo "==> Starting sssd"
+systemctl enable --now sssd.service
+systemctl restart sssd.service
+
+echo "==> Verifying"
+if id "$JOIN_USER" >/dev/null 2>&1; then
+    echo "    Domain lookups are working."
+else
+    echo "    Join completed, but '$JOIN_USER' did not resolve." >&2
+    echo "    Check: journalctl -u sssd -b, and 'getent passwd <someuser>'" >&2
+fi
+
+echo
+echo "Done. Machine is $NEW_NAME.$DOMAIN"
+echo "Reboot and log in with your domain account."
+echo "If you cannot sudo afterwards, add your AD group to /etc/sudoers.d/."

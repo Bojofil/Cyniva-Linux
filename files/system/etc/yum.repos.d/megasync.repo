@@ -1,0 +1,19 @@
+# VERIFY THIS BEFORE YOUR FIRST BUILD.
+#
+# MEGA publishes per-Fedora-release repos and the path changes each cycle.
+# Go to https://mega.io/desktop, pick the Fedora build, and confirm:
+#   - the baseurl for your Fedora release
+#   - the gpgkey URL
+#   - the package name (historically `megasync`; MEGA has been rebranding
+#     the client as "MEGA Desktop App", so the RPM name may have changed)
+#
+# Sanity-check the package name inside a Fedora container before building:
+#   podman run --rm -it registry.fedoraproject.org/fedora:44 bash
+#   # then add this repo and run: dnf search mega
+
+[MEGAsync]
+name=MEGAsync
+baseurl=https://mega.nz/linux/repo/Fedora_44/
+gpgkey=https://mega.nz/linux/repo/Fedora_44/repodata/repomd.xml.key
+gpgcheck=1
+enabled=1
