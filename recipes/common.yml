@@ -91,5 +91,17 @@ modules:
     scripts:
       - install-megasync.sh
       - branding.sh
+      - plymouth.sh
       - authselect.sh
       - fix-perms.sh
+
+  # ---------------------------------------------------------------
+  # Regenerate initramfs
+  # ---------------------------------------------------------------
+  # REQUIRED for the plymouth theme to take effect. Plymouth starts before
+  # the root filesystem is mounted, so the theme must live inside the
+  # initramfs -- editing /usr/share/plymouth alone changes nothing.
+  #
+  # This adds noticeably to build time and image size. If you drop
+  # plymouth.sh, drop this too.
+  - type: initramfs
