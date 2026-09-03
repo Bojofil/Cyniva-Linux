@@ -50,6 +50,9 @@ modules:
   # ---------------------------------------------------------------
   # Flatpaks are NOT baked into the image. This module drops in a systemd
   # unit that installs them on first boot, then marks itself done.
+  # Pinned to v1: the module was rewritten with a breaking config change.
+  # See https://blue-build.org/reference/modules/default-flatpaks/ if you
+  # want to migrate this block to the v2 schema later.
   - type: default-flatpaks@v1
     notify: true
     system:
@@ -87,11 +90,6 @@ modules:
   - type: script
     scripts:
       - install-megasync.sh
-      - dconf-update.sh
+      - branding.sh
       - authselect.sh
       - fix-perms.sh
-
-  # ---------------------------------------------------------------
-  # Image signing -- keep this last
-  # ---------------------------------------------------------------
-  - type: signing

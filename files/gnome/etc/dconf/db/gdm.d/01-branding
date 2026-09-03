@@ -1,0 +1,12 @@
+# Login screen branding. Compiled into the gdm dconf database by
+# dconf-update.sh at build time.
+
+[org/gnome/login-screen]
+logo='/usr/share/pixmaps/cyniva-logo.png'
+banner-message-enable=true
+banner-message-text='Cyniva Linux'
+disable-user-list=false
+
+# Set to true if you want the login screen to stop listing local users --
+# relevant once these machines are domain-joined, since AD users will not
+# appear in the list anyway.

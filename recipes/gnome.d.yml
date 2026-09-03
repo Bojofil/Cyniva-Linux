@@ -1,0 +1,23 @@
+# GNOME-only modules. Included from recipes/gnome.yml after common.yml.
+
+modules:
+  # dconf databases: desktop defaults, extension allowlist, GDM branding
+  - type: files
+    files:
+      - source: gnome
+        destination: /
+
+  # Installs system-wide from extensions.gnome.org, matching this image's
+  # GNOME release. Names are the human-readable ones from the site.
+  #
+  # Check `gnome-extensions list` in the VM first -- if Bluefin already ships
+  # these as RPMs, drop them here and rely on 02-extensions alone.
+  - type: gnome-extensions
+    install:
+      - Dash to Dock
+      - Blur my Shell
+
+  # Must run after the dconf files land.
+  - type: script
+    scripts:
+      - dconf-update.sh

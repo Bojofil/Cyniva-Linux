@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+
+name: cyniva-linux-kde
+description: Personal KDE Plasma image
+alt-tags:
+  - kde
+
+# Aurora is Bluefin's KDE sibling -- same base, same codec/driver handling.
+# For a leaner starting point see ghcr.io/ublue-os/kinoite-main.
+base-image: ghcr.io/ublue-os/aurora
+image-version: latest
+
+modules:
+  - from-file: common.yml
+  - from-file: kde.d.yml
+
+  # signing must be the last module in the recipe
+  - type: signing

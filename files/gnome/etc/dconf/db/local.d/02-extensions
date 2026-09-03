@@ -1,0 +1,24 @@
+# Which extensions are on by default.
+#
+# This is an EXPLICIT allowlist -- anything not named here stays off, even if
+# Bluefin ships it and enables it. That is the point: you do not have to
+# uninstall Bluefin's extensions (they come in as RPMs and fighting their
+# dependencies is not worth it), you just do not enable them.
+#
+# Users can still toggle anything in Extension Manager; that writes to their
+# own dconf and overrides this default.
+#
+# IMPORTANT: verify these UUIDs against `gnome-extensions list` in the VM
+# before trusting them. Bluefin may ship a fork with a different UUID.
+
+[org/gnome/shell]
+disable-user-extensions=false
+enabled-extensions=['dash-to-dock@micxgx.gmail.com', 'blur-my-shell@aunetx']
+
+# Dash to Dock defaults -- delete this block if you would rather configure
+# it by hand on each machine.
+[org/gnome/shell/extensions/dash-to-dock]
+dock-position='BOTTOM'
+extend-height=false
+dock-fixed=false
+intellihide=true

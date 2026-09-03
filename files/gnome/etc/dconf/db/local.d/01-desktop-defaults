@@ -1,0 +1,27 @@
+# System-wide GNOME defaults. Users can still override these; if you want them
+# locked, add matching paths to /etc/dconf/db/local.d/locks/.
+
+[org/gnome/desktop/interface]
+icon-theme='Papirus'
+monospace-font-name='AdwaitaMono Nerd Font 11'
+color-scheme='prefer-dark'
+
+[org/gnome/desktop/peripherals/touchpad]
+tap-to-click=true
+
+# WALLPAPER: commented out until artwork exists at the path below.
+# Pointing dconf at a missing file gives a black desktop, so add
+# files/system/usr/share/backgrounds/cyniva/default.jpg first, then
+# uncomment. The GNOME lock screen inherits the desktop background.
+# Wallpaper. Drop your image at:
+#   files/system/usr/share/backgrounds/cyniva/default.jpg
+# The GNOME lock screen shows a blurred version of the desktop background,
+# so setting this covers the lock screen too.
+# [org/gnome/desktop/background]
+# picture-uri='file:///usr/share/backgrounds/cyniva/default.jpg'
+# picture-uri-dark='file:///usr/share/backgrounds/cyniva/default.jpg'
+# picture-options='zoom'
+
+# [org/gnome/desktop/screensaver]
+# picture-uri='file:///usr/share/backgrounds/cyniva/default.jpg'
+# picture-options='zoom'

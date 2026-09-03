@@ -1,12 +1,16 @@
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 
-name: cyniva-linux-gnome            # <-- change me; this becomes the image name
-description: Cyniva Linux GNOME
+name: cyniva-linux-gnome
+description: Personal GNOME image
 alt-tags:
   - gnome
 
 base-image: ghcr.io/ublue-os/bluefin
-image-version: latest     # or a pinned Fedora version tag, e.g. "44"
+image-version: latest
 
 modules:
   - from-file: common.yml
+  - from-file: gnome.d.yml
+
+  # signing must be the last module in the recipe
+  - type: signing

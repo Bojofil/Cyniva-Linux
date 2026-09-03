@@ -1,0 +1,11 @@
+# System-wide Plasma defaults. This is the KDE equivalent of the dconf
+# database on GNOME -- users override it in ~/.config/kdeglobals.
+
+[Icons]
+Theme=Papirus-Dark
+
+[General]
+fixed=AdwaitaMono Nerd Font,11,-1,5,50,0,0,0,0,0
+
+[KDE]
+LookAndFeelPackage=org.kde.breezedark.desktop

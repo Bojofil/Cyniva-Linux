@@ -1,0 +1,16 @@
+# KDE-only modules. Included from recipes/kde.yml after common.yml.
+#
+# Note what is NOT here compared to gnome.d.yml:
+#   - no dconf. Plasma ignores it entirely; the equivalent is kdeglobals
+#     and friends under /etc/xdg.
+#   - no extensions module. Plasma widgets are per-user and there is no
+#     system-wide install path equivalent to GNOME's.
+#
+# The Active Directory setup in common.yml needs NO changes for KDE. That is
+# the payoff from using `adcli join` rather than GNOME's enterprise login.
+
+modules:
+  - type: files
+    files:
+      - source: kde
+        destination: /
