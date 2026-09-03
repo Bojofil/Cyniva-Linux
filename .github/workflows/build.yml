@@ -13,7 +13,7 @@ on:
 concurrency:
   # only run one build at a time
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   bluebuild:
     name: Build Custom Image
@@ -28,6 +28,7 @@ jobs:
         recipe:
           # !! Add your recipes here
           - gnome.yml
+          - kde.yml
     steps:
       # the build is fully handled by the reusable github action
       - name: Build Custom Image
