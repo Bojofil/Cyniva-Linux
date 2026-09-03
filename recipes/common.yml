@@ -21,29 +21,34 @@ modules:
   # ---------------------------------------------------------------
   # Layered RPMs
   # ---------------------------------------------------------------
-  # NOTE: newer BlueBuild releases renamed this module to `dnf`.
-  # If the build fails with "unknown module type", swap `rpm-ostree` -> `dnf`
-  # and check https://blue-build.org/reference/modules/ for the current key names.
-  - type: rpm-ostree
+  # Uses the `dnf` module, NOT `rpm-ostree`. Fedora replaced rpm-ostree with
+  # dnf5 + bootc from F41 onward, and Aurora's base no longer supports
+  # rpm-ostree in container builds -- it fails with "This system was not
+  # booted via libostree". The dnf module works on both bases.
+  #
+  # Note the nested schema: packages go under `install: packages:`, not
+  # directly under `install:` like the old module.
+  - type: dnf
     install:
-      # --- your apps ---
-      - firefox
-      - code                       # needs the Microsoft repo, see files/system/etc/yum.repos.d/
-      # megasync is NOT here -- its %post scriptlet breaks the whole
-      # transaction. Installed separately by install-megasync.sh below.
-      - papirus-icon-theme
+      packages:
+        # --- your apps ---
+        - firefox
+        - code                       # needs the Microsoft repo, see files/system/etc/yum.repos.d/
+        - papirus-icon-theme
+        # megasync is NOT here -- its %post scriptlet breaks the whole
+        # transaction. Installed separately by install-megasync.sh below.
 
-      # --- Active Directory plumbing ---
-      # The join itself CANNOT be baked in (per-machine keytab), but every
-      # tool needed to perform it at first boot can be.
-      - realmd
-      - sssd
-      - sssd-tools
-      - adcli
-      - oddjob
-      - oddjob-mkhomedir
-      - samba-common-tools
-      - krb5-workstation
+        # --- Active Directory plumbing ---
+        # The join itself CANNOT be baked in (per-machine keytab), but every
+        # tool needed to perform it at first boot can be.
+        - realmd
+        - sssd
+        - sssd-tools
+        - adcli
+        - oddjob
+        - oddjob-mkhomedir
+        - samba-common-tools
+        - krb5-workstation
 
   # ---------------------------------------------------------------
   # Flatpaks
@@ -66,6 +71,7 @@ modules:
         - com.discordapp.Discord
         - io.github.pol_rivero.github-desktop-plus
         - com.adamcake.Bolt
+
       remove:
         # We layer the Firefox RPM instead, so drop Bluefin's bundled Flatpak.
         # Without this you get two Firefoxes with separate profiles.
