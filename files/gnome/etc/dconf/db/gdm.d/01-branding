@@ -2,7 +2,7 @@
 # dconf-update.sh at build time.
 
 [org/gnome/login-screen]
-logo='/usr/share/pixmaps/cyniva-logo.png'
+logo='/usr/share/icons/hicolor/64x64/apps/cyniva-logo.png'
 banner-message-enable=true
 banner-message-text='Cyniva Linux'
 disable-user-list=false
