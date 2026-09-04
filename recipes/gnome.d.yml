@@ -12,8 +12,12 @@ modules:
     install:
       packages:
         - gnome-tweaks
-        - adw-gtk3-theme
-        - com.mattjakeman.ExtensionManager
+        # adw-gtk3-theme is NOT listed: silverblue-main already ships it, and
+        # dnf5 treats an already-installed package as a resolution FAILURE
+        # rather than a no-op ("Package ... is already installed").
+        #
+        # Flatpak IDs do not go here either -- they belong in the
+        # default-flatpaks block at the bottom of this file.
 
   # dconf databases: desktop defaults, extension allowlist, GDM branding
   - type: files
@@ -53,5 +57,8 @@ modules:
     configurations:
       - scope: system
         install:
+          # GUI for managing GNOME extensions. Meaningless on Plasma.
+          - com.mattjakeman.ExtensionManager
+
           - org.gtk.Gtk3theme.adw-gtk3
           - org.gtk.Gtk3theme.adw-gtk3-dark
