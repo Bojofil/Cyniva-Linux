@@ -1,6 +1,10 @@
 # GNOME-only modules. Included from recipes/gnome.yml after common.yml.
 
 modules:
+  - type: dnf
+    install:
+      packages:
+        - gnome-tweaks
   # dconf databases: desktop defaults, extension allowlist, GDM branding
   - type: files
     files:
