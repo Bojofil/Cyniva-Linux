@@ -1,13 +1,18 @@
 # Shared modules for both the GNOME and KDE images.
-# Included from recipes/gnome.yml and (later) recipes/kde.yml via `from-file`.
+# Included from recipes/gnome.yml and recipes/kde.yml via `from-file`.
+#
+# default-flatpaks is @v2 here: v2 takes a list of `configurations:` and
+# subsequent module calls APPEND to that list rather than overriding. That
+# lets the shared app list live here while gnome.d.yml adds a GNOME-only
+# configuration for the GTK3 theme extensions.
 
 modules:
   # ---------------------------------------------------------------
-  # Static files (repo definitions, dconf defaults, helper scripts)
+  # Static files (repo definitions, logos, helper scripts)
   # ---------------------------------------------------------------
-  # MUST come before rpm-ostree: this is what puts vscode.repo and
-  # megasync.repo into /etc/yum.repos.d. Without it the resolver has never
-  # heard of those repos and fails with "Packages not found: code, megasync".
+  # MUST come before dnf: this is what puts vscode.repo and megasync.repo
+  # into /etc/yum.repos.d. Without it the resolver has never heard of those
+  # repos and fails with "Packages not found: code, megasync".
   - type: files
     files:
       - source: system
@@ -22,18 +27,15 @@ modules:
   # Layered RPMs
   # ---------------------------------------------------------------
   # Uses the `dnf` module, NOT `rpm-ostree`. Fedora replaced rpm-ostree with
-  # dnf5 + bootc from F41 onward, and Aurora's base no longer supports
-  # rpm-ostree in container builds -- it fails with "This system was not
-  # booted via libostree". The dnf module works on both bases.
-  #
-  # Note the nested schema: packages go under `install: packages:`, not
-  # directly under `install:` like the old module.
+  # dnf5 + bootc from F41 onward, and the Kinoite/Aurora bases no longer
+  # support rpm-ostree in container builds -- it fails with "This system was
+  # not booted via libostree".
   - type: dnf
     install:
       packages:
-        # --- your apps ---
+        # --- apps ---
         - firefox
-        - code                       # needs the Microsoft repo, see files/system/etc/yum.repos.d/
+        - code                 # needs the Microsoft repo, see files/system/etc/yum.repos.d/
         - papirus-icon-theme
         # megasync is NOT here -- its %post scriptlet breaks the whole
         # transaction. Installed separately by install-megasync.sh below.
@@ -51,33 +53,31 @@ modules:
         - krb5-workstation
 
   # ---------------------------------------------------------------
-  # Flatpaks
+  # Flatpaks (shared)
   # ---------------------------------------------------------------
-  # Flatpaks are NOT baked into the image. This module drops in a systemd
-  # unit that installs them on first boot, then marks itself done.
-  # Pinned to v1: the module was rewritten with a breaking config change.
-  # See https://blue-build.org/reference/modules/default-flatpaks/ if you
-  # want to migrate this block to the v2 schema later.
-  - type: default-flatpaks@v1
-    notify: true
-    system:
-      repo-url: https://dl.flathub.org/repo/flathub.flatpakrepo
-      repo-name: flathub
-      repo-title: "Flathub"
-      install:
-        - eu.betterbird.Betterbird
-        - com.bitwarden.desktop
-        - com.spotify.Client
-        - com.discordapp.Discord
-        - io.github.pol_rivero.github-desktop-plus
-        - com.adamcake.Bolt
-
-      remove:
-        # We layer the Firefox RPM instead, so drop Bluefin's bundled Flatpak.
-        # Without this you get two Firefoxes with separate profiles.
-        # If you ever switch to the Flatpak, move org.mozilla.firefox up to
-        # `install:` and drop `firefox` from the rpm-ostree list above.
-        - org.mozilla.firefox
+  # gnome.d.yml appends a second configuration for the adw-gtk3 theme
+  # extensions. v2 appends rather than overrides, so both apply on GNOME
+  # while KDE gets only this one.
+  #
+  # NOTE: v2 dropped `remove:`. The old `remove: org.mozilla.firefox` line is
+  # gone. That was there to kill Bluefin's bundled Firefox Flatpak; on
+  # silverblue-main Firefox comes from the RPM and there is nothing to remove.
+  # Verify with: flatpak list --app | grep -i firefox
+  - type: default-flatpaks@v2
+    configurations:
+      - scope: system
+        notify: true
+        repo:
+          url: https://dl.flathub.org/repo/flathub.flatpakrepo
+          name: flathub
+          title: Flathub
+        install:
+          - eu.betterbird.Betterbird
+          - com.bitwarden.desktop
+          - com.spotify.Client
+          - com.discordapp.Discord
+          - io.github.pol_rivero.github-desktop-plus
+          - com.adamcake.Bolt
 
   # ---------------------------------------------------------------
   # Fonts

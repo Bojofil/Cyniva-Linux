@@ -1,10 +1,19 @@
 # GNOME-only modules. Included from recipes/gnome.yml after common.yml.
 
 modules:
+  # GNOME-only packages.
+  #
+  # adw-gtk3 styles legacy GTK3 apps to match libadwaita. Bluefin shipped this
+  # by default; silverblue-main does not, so it has to be added explicitly.
+  # Pointless on KDE, hence here rather than common.yml.
+  #
+  # If the build fails on the name, run `dnf search adw-gtk3` to confirm it.
   - type: dnf
     install:
       packages:
         - gnome-tweaks
+        - adw-gtk3-theme
+
   # dconf databases: desktop defaults, extension allowlist, GDM branding
   - type: files
     files:
@@ -25,3 +34,23 @@ modules:
   - type: script
     scripts:
       - dconf-update.sh
+
+  # ---------------------------------------------------------------
+  # Flatpaks (GNOME additions)
+  # ---------------------------------------------------------------
+  # APPENDS to the configuration list from common.yml -- it does not replace
+  # it. Both configurations run on GNOME; KDE gets only common.yml's.
+  #
+  # GTK3 theme for sandboxed apps. Flatpaks cannot see host themes, so the
+  # theme must exist inside the runtime too. xdg-desktop-portal passes the
+  # host's gtk-theme setting through automatically.
+  #
+  # If the build fails validating these IDs, v2 checks Flathub availability at
+  # build time and may not handle runtime extensions. Fall back to the v1
+  # layout in that case.
+  - type: default-flatpaks@v2
+    configurations:
+      - scope: system
+        install:
+          - org.gtk.Gtk3theme.adw-gtk3
+          - org.gtk.Gtk3theme.adw-gtk3-dark
