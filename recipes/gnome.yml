@@ -5,7 +5,7 @@ description: Personal GNOME image
 alt-tags:
   - gnome
 
-base-image: ghcr.io/ublue-os/bluefin
+base-image: ghcr.io/ublue-os/silverblue-main
 image-version: latest
 
 modules:

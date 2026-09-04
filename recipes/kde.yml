@@ -7,7 +7,7 @@ alt-tags:
 
 # Aurora is Bluefin's KDE sibling -- same base, same codec/driver handling.
 # For a leaner starting point see ghcr.io/ublue-os/kinoite-main.
-base-image: ghcr.io/ublue-os/aurora
+base-image: ghcr.io/ublue-os/kinoite-main
 image-version: latest
 
 modules:
