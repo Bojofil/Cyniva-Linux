@@ -13,6 +13,7 @@ modules:
       packages:
         - gnome-tweaks
         - adw-gtk3-theme
+        - com.mattjakeman.ExtensionManager
 
   # dconf databases: desktop defaults, extension allowlist, GDM branding
   - type: files
