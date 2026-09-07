@@ -98,7 +98,6 @@ modules:
       - install-megasync.sh
       - branding.sh
       - plymouth.sh
-      - authselect.sh
       - fix-perms.sh
 
   # ---------------------------------------------------------------
