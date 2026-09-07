@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
 # Per-machine Active Directory setup.
 #
-# Deliberately contains no domain-specific data, so this file is safe to
-# ship in a public image. Everything site-specific is supplied at runtime.
+# Contains no domain-specific data, so it is safe in a public image.
 #
 # Usage:
-#   sudo ad-setup <domain> <path-to-sssd.conf> [join-user]
+#   sudo ad-setup <domain> <path-to-sssd-overrides.conf> [join-user]
 #
 # Environment:
-#   HOSTNAME_PREFIX  Name prefix for generated hostnames.  Default: CYN-WS
-#   MACHINE_NAME     Skip generation and use this exact name instead.
+#   HOSTNAME_PREFIX  Prefix for generated hostnames.  Default: CYN-WS
+#   MACHINE_NAME     Skip generation, use this exact name.
 #
-# Example:
-#   sudo ad-setup corp.example.com /run/media/me/usb/sssd.conf jsmith
-#   sudo MACHINE_NAME=CYN-WS0042 ad-setup corp.example.com ./sssd.conf jsmith
+# NOTE ON CONFIG HANDLING:
+# `realm join` writes its own /etc/sssd/sssd.conf and will overwrite anything
+# placed there beforehand. So the supplied file is installed as a drop-in at
+# /etc/sssd/conf.d/10-local.conf INSTEAD. SSSD merges conf.d/*.conf over the
+# main file, so your settings win while realm still does the heavy lifting.
+#
+# The drop-in must be 0600 and root-owned or SSSD refuses to start.
 
 set -euo pipefail
 
@@ -23,36 +26,32 @@ JOIN_USER="${3:-Administrator}"
 HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-CYN-WS}"
 
 if [[ -z "$DOMAIN" || -z "$CONF_SRC" ]]; then
-    echo "usage: ad-setup <domain> <path-to-sssd.conf> [join-user]" >&2
+    echo "usage: ad-setup <domain> <path-to-sssd-overrides.conf> [join-user]" >&2
     exit 1
 fi
+[[ $EUID -eq 0 ]] || { echo "must be run as root" >&2; exit 1; }
+[[ -f "$CONF_SRC" ]] || { echo "no such file: $CONF_SRC" >&2; exit 1; }
 
-if [[ $EUID -ne 0 ]]; then
-    echo "must be run as root" >&2
-    exit 1
-fi
-
-if [[ ! -f "$CONF_SRC" ]]; then
-    echo "no such file: $CONF_SRC" >&2
+# ---------------------------------------------------------------------
+# Discovery first -- fail loudly here rather than midway through a join
+# ---------------------------------------------------------------------
+echo "==> Discovering $DOMAIN"
+if ! realm discover "$DOMAIN"; then
+    echo "ERROR: cannot discover $DOMAIN." >&2
+    echo "       Almost always DNS. Check that this machine resolves via a DC:" >&2
+    echo "         resolvectl status | grep -A3 'DNS Servers'" >&2
+    echo "         dig +short -t SRV _ldap._tcp.dc._msdcs.$DOMAIN" >&2
     exit 1
 fi
 
 # ---------------------------------------------------------------------
-# Pick a machine name
+# Machine name
 # ---------------------------------------------------------------------
-# NetBIOS caps computer names at 15 characters. "CYN-WS" + 4 digits = 10,
-# which leaves room, but a longer prefix will silently truncate in AD.
 generate_name() {
-    local n
-    n=$(printf '%04d' "$(( $(od -An -N2 -tu2 < /dev/urandom) % 10000 ))")
-    printf '%s%s' "$HOSTNAME_PREFIX" "$n"
+    printf '%s%04d' "$HOSTNAME_PREFIX" \
+        "$(( $(od -An -N2 -tu2 < /dev/urandom) % 10000 ))"
 }
-
-name_taken() {
-    # Joined machines register in AD-integrated DNS, so a resolvable name is
-    # almost certainly in use. Cheap heuristic; not authoritative.
-    getent hosts "$1.$DOMAIN" >/dev/null 2>&1
-}
+name_taken() { getent hosts "$1.$DOMAIN" >/dev/null 2>&1; }
 
 if [[ -n "${MACHINE_NAME:-}" ]]; then
     NEW_NAME="$MACHINE_NAME"
@@ -61,18 +60,14 @@ else
     echo "==> Generating machine name"
     for attempt in {1..10}; do
         NEW_NAME="$(generate_name)"
-        if name_taken "$NEW_NAME"; then
-            echo "    $NEW_NAME already resolves, retrying ($attempt/10)"
-            continue
-        fi
-        break
+        name_taken "$NEW_NAME" || break
+        echo "    $NEW_NAME already resolves, retrying ($attempt/10)"
     done
     echo "    Selected: $NEW_NAME"
 fi
 
 if (( ${#NEW_NAME} > 15 )); then
     echo "ERROR: '$NEW_NAME' exceeds the 15-character NetBIOS limit." >&2
-    echo "       Shorten HOSTNAME_PREFIX and try again." >&2
     exit 1
 fi
 
@@ -80,33 +75,46 @@ echo "==> Setting hostname to $NEW_NAME.$DOMAIN"
 hostnamectl set-hostname "$NEW_NAME.$DOMAIN"
 
 # ---------------------------------------------------------------------
-# Config and join
+# Join
 # ---------------------------------------------------------------------
-echo "==> Installing sssd.conf"
-install -o root -g root -m 0600 "$CONF_SRC" /etc/sssd/sssd.conf
-
 echo "==> Joining $DOMAIN as $NEW_NAME"
-# adcli is used instead of `realm join` specifically because realm rewrites
-# /etc/sssd/sssd.conf, which would clobber the file we just installed.
-# --computer-name is passed explicitly rather than letting adcli infer it.
-adcli join \
-    --domain="$DOMAIN" \
+realm join --verbose \
+    --user="$JOIN_USER" \
     --computer-name="$NEW_NAME" \
-    --login-user="$JOIN_USER"
+    "$DOMAIN"
 
-echo "==> Starting sssd"
-systemctl enable --now sssd.service
+# ---------------------------------------------------------------------
+# Layer the local config over what realm generated
+# ---------------------------------------------------------------------
+echo "==> Installing SSSD overrides to /etc/sssd/conf.d/10-local.conf"
+mkdir -p /etc/sssd/conf.d
+install -o root -g root -m 0600 "$CONF_SRC" /etc/sssd/conf.d/10-local.conf
+chmod 0700 /etc/sssd/conf.d
+
+echo "==> Restarting sssd"
 systemctl restart sssd.service
+sleep 2
 
+# ---------------------------------------------------------------------
+# Verify
+# ---------------------------------------------------------------------
 echo "==> Verifying"
+if ! systemctl is-active --quiet sssd.service; then
+    echo "ERROR: sssd failed to start. Your overrides may be invalid." >&2
+    echo "       journalctl -u sssd -b" >&2
+    exit 1
+fi
+
+sssctl domain-status "$DOMAIN" || true
+
 if id "$JOIN_USER" >/dev/null 2>&1; then
-    echo "    Domain lookups are working."
+    echo "    Directory lookups are working."
 else
-    echo "    Join completed, but '$JOIN_USER' did not resolve." >&2
-    echo "    Check: journalctl -u sssd -b, and 'getent passwd <someuser>'" >&2
+    echo "    WARNING: '$JOIN_USER' did not resolve." >&2
+    echo "    Try: id $JOIN_USER@$DOMAIN" >&2
+    echo "    Then: journalctl -u sssd -b" >&2
 fi
 
 echo
 echo "Done. Machine is $NEW_NAME.$DOMAIN"
-echo "Reboot and log in with your domain account."
-echo "If you cannot sudo afterwards, add your AD group to /etc/sudoers.d/."
+echo "If you cannot sudo as a domain user, add your AD group to /etc/sudoers.d/."
