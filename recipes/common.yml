@@ -77,7 +77,7 @@ modules:
           - com.spotify.Client
           - com.discordapp.Discord
           - io.github.pol_rivero.github-desktop-plus
-          - com.adamcake.Bolt
+          - it.mijorus.gearlever
 
   # ---------------------------------------------------------------
   # Fonts
